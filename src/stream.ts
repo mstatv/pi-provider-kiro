@@ -67,6 +67,7 @@ import {
 import { ThinkingTagParser } from "./thinking-parser.js";
 import { kiroTokenTypeHeaders } from "./token-type.js";
 import { countTokens } from "./tokenizer.js";
+import { type KiroStreamContext, toContext } from "./transcript.js";
 import {
   buildHistory,
   convertImagesToKiro,
@@ -392,7 +393,7 @@ function emitToolCall(
 
 export function streamKiro(
   model: Model<Api>,
-  context: Context,
+  context: KiroStreamContext,
   options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
   return streamKiroWithUsageTracking(
@@ -410,16 +411,17 @@ export function streamKiro(
 
 export function createKiroStream(
   usageTracking: KiroUsageTracking,
-): (model: Model<Api>, context: Context, options?: SimpleStreamOptions) => AssistantMessageEventStream {
+): (model: Model<Api>, context: KiroStreamContext, options?: SimpleStreamOptions) => AssistantMessageEventStream {
   return (model, context, options) => streamKiroWithUsageTracking(usageTracking, model, context, options);
 }
 
 function streamKiroWithUsageTracking(
   usageTracking: KiroUsageTracking,
   model: Model<Api>,
-  context: Context,
+  transcript: KiroStreamContext,
   options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
+  const context: Context = toContext(transcript);
   // pi-ai's barrel re-exports the class as type-only before the runtime class re-export, so
   // a named import of AssistantMessageEventStream resolves to a type. Read it from the
   // namespace import to get the actual constructor. Replaces the removed

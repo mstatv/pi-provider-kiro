@@ -52,6 +52,7 @@ export {
   TOO_BIG_PATTERNS,
 } from "./retry.js";
 export { streamKiro } from "./stream.js";
+export type { KiroStreamContext, KiroSystemMessage } from "./transcript.js";
 export {
   EMPTY_CONTENT_PLACEHOLDER,
   type KiroHistoryEntry,

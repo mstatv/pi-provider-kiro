@@ -15,6 +15,7 @@ import { resetCacheEstimatorForTests } from "../src/cache-estimator.js";
 import { validateKiroConversation, validateKiroToolStructure } from "../src/history-validator.js";
 import { capacityRetryConfig, retryConfig } from "../src/retry.js";
 import { createKiroStream, resetProfileArnCache, streamKiro } from "../src/stream.js";
+import type { KiroStreamContext } from "../src/transcript.js";
 import { EMPTY_CONTENT_PLACEHOLDER, type KiroHistoryEntry } from "../src/transform.js";
 import type { KiroUsageTracking } from "../src/usage-tracking.js";
 import {
@@ -2584,6 +2585,36 @@ describe("Feature 9: Streaming Integration", () => {
     const error = events.find((e) => e.type === "error");
     expect(error).toBeDefined();
     expect(error?.type === "error" && error.error.stopReason).toBe("error");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("sends the prompt and tools carried by a pi-ai >= 0.86 leading system message", async () => {
+    const mockFetch = mockFetchOk('{"content":"Hi"}{"contextUsagePercentage":3}');
+    vi.stubGlobal("fetch", mockFetch);
+
+    const context: KiroStreamContext = {
+      messages: [
+        {
+          role: "system",
+          content: "TRANSCRIPT_SYSTEM_MARKER",
+          toolsAdded: [{ name: "calc", description: "Calculate", parameters: { type: "object", properties: {} } }],
+          timestamp: 0,
+        },
+        { role: "user", content: "Calculate 2+2", timestamp: ts },
+      ],
+    };
+
+    const events = await collect(streamKiro(makeModel({ reasoning: false }), context, { apiKey: "tok" }));
+    expect(events.some((event) => event.type === "done")).toBe(true);
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    const current = body.conversationState.currentMessage.userInputMessage;
+    expect(current.content).toBe("TRANSCRIPT_SYSTEM_MARKER\n\nCalculate 2+2");
+    const tools = current.userInputMessageContext?.tools as Array<{ toolSpecification: { name: string } }> | undefined;
+    expect(tools?.map((t) => t.toolSpecification.name)).toEqual(["calc"]);
+    expect(body.conversationState.history ?? []).toEqual([]);
+    expect(JSON.stringify(body)).not.toContain('"system"');
 
     vi.unstubAllGlobals();
   });

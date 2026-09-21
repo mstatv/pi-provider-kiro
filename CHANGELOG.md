@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Read the system prompt and tool declarations from pi-ai >= 0.86 transcript contexts ([#161](https://github.com/mikeyobrien/pi-provider-kiro/issues/161)). pi 0.86.0 stopped passing `Context.systemPrompt` / `Context.tools` to providers and now folds both into `role: "system"` messages inside `context.messages`, so under 0.86.x every Kiro request went out with an empty prompt and no tool catalog: the model answered in prose or wrote tool syntax as text instead of calling tools. `resolveKiroRequestInputs` (new, exported) replays the transcript the way pi-ai's `collapseSystemMessages` does — later system `content` appends, `sections` patch by name, `toolsAdded`/`toolsRemoved` resolve in order — strips the system messages from the conversation Kiro sees, and still honours the legacy fields, so one build serves pi 0.80 through 0.86.
+
 - Clear the first-token timeout timer once the race is decided. The losing `setTimeout` of the first-token `Promise.race` was never cleared, so every completed request kept a ref'd 90 s timer pending that held the Node event loop open — `pi -p` and SDK embeds sat idle for up to 90 s after the answer printed ([#154](https://github.com/mikeyobrien/pi-provider-kiro/issues/154)).
 - Keep version dots in generated display names for catalog models missing from the bootstrap list. The name was derived from the pi ID, where `toPiModelId` had already rewritten `5.1` as `5-1`, so `claude-fable-5.1` rendered as "Claude Fable 5 1"; it now reads "Claude Fable 5.1".
 
